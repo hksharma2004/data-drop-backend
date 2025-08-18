@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+langchain
+langchain-google-genai
+google-generativeai
+PyPDF2
+faiss-cpu
+appwrite

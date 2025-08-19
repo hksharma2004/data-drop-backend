@@ -7,3 +7,5 @@ google-generativeai
 PyPDF2
 faiss-cpu
 appwrite
+langchain_community
+langchain-core

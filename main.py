@@ -1,3 +1,5 @@
+import datetime
+import os
 import os
 import io
 from fastapi import FastAPI, HTTPException, Body
@@ -120,6 +122,17 @@ def get_conversational_chain():
     return qa_chain
 
 # fastapi Endpoints 
+
+@app.get("/ping")
+async def ping():
+   
+    now = datetime.datetime.utcnow().isoformat() + "Z"
+    return {
+        "status": "alive",
+        "timestamp": now,
+        "source": "appwrite-cron"
+    }
+
 
 @app.get("/list-pdfs")
 async def list_pdfs():

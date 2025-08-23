@@ -135,13 +135,17 @@ async def ping():
 
 
 @app.get("/list-pdfs")
-async def list_pdfs():
-    """Lists all PDF files available in the Appwrite storage."""
+async def list_pdfs(accountId: str):
+
     try:
+        # adding query to filter documents by accountId
         response = databases.list_documents(
             database_id=APPWRITE_DATABASE_ID,
             collection_id=APPWRITE_FILES_COLLECTION_ID,
-            queries=[Query.equal("type", ["document"])]
+            queries=[
+                Query.equal("accountId", [accountId]),
+                Query.equal("type", ["document"]),
+            ],
         )
         # filter all files for ".pdf" extension
         pdf_files = [

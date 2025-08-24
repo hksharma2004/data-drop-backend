@@ -135,15 +135,15 @@ async def ping():
 
 
 @app.get("/list-pdfs")
-async def list_pdfs(accountId: str):
+async def list_pdfs(owner: str):
 
     try:
-        # adding query to filter documents by accountId
+        # adding query to filter documents by owner
         response = databases.list_documents(
             database_id=APPWRITE_DATABASE_ID,
             collection_id=APPWRITE_FILES_COLLECTION_ID,
             queries=[
-                Query.equal("accountId", [accountId]),
+                Query.equal("owner", [owner]),
                 Query.equal("type", ["document"]),
             ],
         )

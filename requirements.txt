@@ -5,6 +5,7 @@ python-dotenv
 # If deploy still fails, try a different patch version (e.g. 0.0.300+).
 langchain==0.0.303
 google-generativeai
+langchain-google-genai
 PyPDF2
 faiss-cpu
 appwrite

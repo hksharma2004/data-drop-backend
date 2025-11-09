@@ -22,7 +22,7 @@ except Exception:
             "If you're deploying, pin a compatible langchain version in requirements.txt, e.g. 'langchain==0.0.303',\n"
             "or adapt this import to the installed langchain package layout."
         )
-from langchain.embeddings import GoogleGenerativeAIEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 import google.generativeai as genai
 from langchain.vectorstores import FAISS
 from langchain.chat_models import ChatGoogleGenerativeAI

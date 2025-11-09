@@ -1,11 +1,8 @@
 fastapi
 uvicorn[standard]
 python-dotenv
-langchain
-langchain-google-genai
+langchain>=0.1.0
 google-generativeai
 PyPDF2
 faiss-cpu
 appwrite
-langchain_community
-langchain-core

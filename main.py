@@ -1,6 +1,5 @@
 import datetime
 import os
-import os
 import io
 from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,7 +8,20 @@ from pydantic import BaseModel
 from typing import List
 
 from PyPDF2 import PdfReader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+# langchain has changed module names across versions (text_splitter vs text_splitters).
+# Try the common locations so the app works with a broader range of langchain releases.
+try:
+    from langchain.text_splitter import RecursiveCharacterTextSplitter
+except Exception:
+    try:
+        from langchain.text_splitters import RecursiveCharacterTextSplitter
+    except Exception:
+        # Provide a clear import error so render logs show the fallback failure.
+        raise ImportError(
+            "RecursiveCharacterTextSplitter not found in 'langchain.text_splitter' or 'langchain.text_splitters'.\n"
+            "If you're deploying, pin a compatible langchain version in requirements.txt, e.g. 'langchain==0.0.303',\n"
+            "or adapt this import to the installed langchain package layout."
+        )
 from langchain.embeddings import GoogleGenerativeAIEmbeddings
 import google.generativeai as genai
 from langchain.vectorstores import FAISS

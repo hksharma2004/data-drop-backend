@@ -1,7 +1,9 @@
 fastapi
 uvicorn[standard]
 python-dotenv
-langchain>=0.1.0
+# Pin a langchain version compatible with the imports used in `main.py`.
+# If deploy still fails, try a different patch version (e.g. 0.0.300+).
+langchain==0.0.303
 google-generativeai
 PyPDF2
 faiss-cpu

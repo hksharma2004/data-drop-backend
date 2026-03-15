@@ -8,15 +8,14 @@ from pydantic import BaseModel
 from typing import List
 
 from PyPDF2 import PdfReader
-# langchain has changed module names across versions (text_splitter vs text_splitters).
-# Try the common locations so the app works with a broader range of langchain releases.
+
+
 try:
     from langchain.text_splitter import RecursiveCharacterTextSplitter
 except Exception:
     try:
         from langchain.text_splitters import RecursiveCharacterTextSplitter
     except Exception:
-        # Provide a clear import error so render logs show the fallback failure.
         raise ImportError(
             "RecursiveCharacterTextSplitter not found in 'langchain.text_splitter' or 'langchain.text_splitters'.\n"
             "If you're deploying, pin a compatible langchain version in requirements.txt, e.g. 'langchain==0.0.303',\n"
@@ -34,12 +33,10 @@ from appwrite.services.databases import Databases
 from appwrite.services.storage import Storage
 from appwrite.query import Query
 
-# Load env 
+# Load env
 load_dotenv()
 
-
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-
 
 APPWRITE_ENDPOINT = os.getenv("APPWRITE_ENDPOINT")
 APPWRITE_PROJECT_ID = os.getenv("APPWRITE_PROJECT_ID")
@@ -47,7 +44,6 @@ APPWRITE_API_KEY = os.getenv("APPWRITE_API_KEY")
 APPWRITE_DATABASE_ID = os.getenv("APPWRITE_DATABASE_ID")
 APPWRITE_FILES_COLLECTION_ID = os.getenv("APPWRITE_FILES_COLLECTION_ID")
 APPWRITE_BUCKET_ID = os.getenv("APPWRITE_BUCKET_ID")
-
 
 client = Client()
 client.set_endpoint(APPWRITE_ENDPOINT)
@@ -57,23 +53,23 @@ client.set_key(APPWRITE_API_KEY)
 databases = Databases(client)
 storage = Storage(client)
 
-# fast api initialize
+# FastAPI initialize
 app = FastAPI()
 
-# configuring cors
+# Configuring CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],  
-    allow_headers=["*"],  
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 class ChatRequest(BaseModel):
     file_ids: List[str]
     question: str
 
-# rag functionssss
+# RAG functions
 
 def get_pdf_text_from_buffers(pdf_buffers: List[bytes]) -> str:
     """Extracts text from a list of PDF file buffers."""
@@ -96,7 +92,9 @@ def get_vector_store(text_chunks: List[str]):
     """Creates a FAISS vector store from text chunks."""
     if not text_chunks:
         return None
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+
+
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-large-exp-03-07")
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
     return vector_store
 
@@ -110,34 +108,33 @@ def get_conversational_chain():
 
     Answer:
     """
-    # initializing model
-    model = ChatGoogleGenerativeAI(model="gemini-3-flash", temperature=0.3)
+
+    model = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.3)
     prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
-    
-    # prompt chaining here
+
+    # Prompt chaining
     def qa_chain(docs, question):
-        # formatting the context from docs
+        # Formatting the context from docs
         context = "\n\n".join([doc.page_content for doc in docs])
-        
+
         # Formatting the prompt
         formatted_prompt = prompt.format(context=context, question=question)
-        
-        # response from model
+
+        # Response from model
         response = model.invoke(formatted_prompt)
-        
-        # extracting content from response
+
+        # Extracting content from response
         if hasattr(response, 'content'):
             return {"output_text": response.content}
         else:
             return {"output_text": str(response)}
-    
+
     return qa_chain
 
-# fastapi Endpoints 
+# FastAPI Endpoints
 
 @app.get("/ping")
 async def ping():
-   
     now = datetime.datetime.utcnow().isoformat() + "Z"
     return {
         "status": "alive",
@@ -148,9 +145,8 @@ async def ping():
 
 @app.get("/list-pdfs")
 async def list_pdfs(owner: str):
-
     try:
-        # adding query to filter documents by owner
+        # Adding query to filter documents by owner
         response = databases.list_documents(
             database_id=APPWRITE_DATABASE_ID,
             collection_id=APPWRITE_FILES_COLLECTION_ID,
@@ -159,7 +155,7 @@ async def list_pdfs(owner: str):
                 Query.equal("type", ["document"]),
             ],
         )
-        # filter all files for ".pdf" extension
+        # Filter all files for ".pdf" extension
         pdf_files = [
             {"id": doc["bucketFileId"], "name": doc["name"]}
             for doc in response["documents"]
@@ -168,6 +164,7 @@ async def list_pdfs(owner: str):
         return {"files": pdf_files}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch PDF list from Appwrite: {str(e)}")
+
 
 @app.post("/chat-with-pdfs")
 async def chat_with_pdfs(request: ChatRequest):
@@ -178,7 +175,7 @@ async def chat_with_pdfs(request: ChatRequest):
         raise HTTPException(status_code=400, detail="No question provided.")
 
     try:
-        # 1. getting pdf files from appwrite storage
+        # 1. Getting PDF files from Appwrite storage
         pdf_buffers = []
         for file_id in request.file_ids:
             file_content = storage.get_file_download(
@@ -187,30 +184,27 @@ async def chat_with_pdfs(request: ChatRequest):
             )
             pdf_buffers.append(file_content)
 
-        # 2.processing pdfs
+        # 2. Processing PDFs
         raw_text = get_pdf_text_from_buffers(pdf_buffers)
         if not raw_text.strip():
             return {"answer": "Could not extract any text from the selected PDF(s). Please check the documents."}
-            
+
         text_chunks = get_text_chunks(raw_text)
         vector_store = get_vector_store(text_chunks)
 
         if not vector_store:
             return {"answer": "Failed to create a vector store from the PDF content. The document might be empty or unreadable."}
 
-
         docs = vector_store.similarity_search(request.question)
-        
 
         if docs and isinstance(docs[0], str):
             docs = [Document(page_content=doc) for doc in docs]
-        
+
         chain = get_conversational_chain()
         response = chain(docs, request.question)
 
         return {"answer": response["output_text"]}
 
     except Exception as e:
-
         print(f"An error occurred: {e}")
         raise HTTPException(status_code=500, detail=f"An error occurred while processing the request: {str(e)}")

@@ -9,7 +9,6 @@ from typing import List
 
 from PyPDF2 import PdfReader
 
-
 try:
     from langchain.text_splitter import RecursiveCharacterTextSplitter
 except Exception:
@@ -92,9 +91,7 @@ def get_vector_store(text_chunks: List[str]):
     """Creates a FAISS vector store from text chunks."""
     if not text_chunks:
         return None
-
-
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-large-exp-03-07")
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
     return vector_store
 
@@ -108,22 +105,13 @@ def get_conversational_chain():
 
     Answer:
     """
-
     model = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.3)
     prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
 
-    # Prompt chaining
     def qa_chain(docs, question):
-        # Formatting the context from docs
         context = "\n\n".join([doc.page_content for doc in docs])
-
-        # Formatting the prompt
         formatted_prompt = prompt.format(context=context, question=question)
-
-        # Response from model
         response = model.invoke(formatted_prompt)
-
-        # Extracting content from response
         if hasattr(response, 'content'):
             return {"output_text": response.content}
         else:
@@ -146,7 +134,6 @@ async def ping():
 @app.get("/list-pdfs")
 async def list_pdfs(owner: str):
     try:
-        # Adding query to filter documents by owner
         response = databases.list_documents(
             database_id=APPWRITE_DATABASE_ID,
             collection_id=APPWRITE_FILES_COLLECTION_ID,
@@ -155,7 +142,6 @@ async def list_pdfs(owner: str):
                 Query.equal("type", ["document"]),
             ],
         )
-        # Filter all files for ".pdf" extension
         pdf_files = [
             {"id": doc["bucketFileId"], "name": doc["name"]}
             for doc in response["documents"]

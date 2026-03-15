@@ -96,7 +96,7 @@ def get_vector_store(text_chunks: List[str]):
     """Creates a FAISS vector store from text chunks."""
     if not text_chunks:
         return None
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
     return vector_store
 

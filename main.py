@@ -1,6 +1,8 @@
 import datetime as dt
 import io
 import os
+from typing import Optional
+from urllib.parse import urlparse
 
 from appwrite.client import Client
 from appwrite.query import Query
@@ -73,10 +75,26 @@ def as_dict(value):
     return value.to_dict()
 
 
-def pdf_metadata(doc):
+def bucket_file_id_from_url(url: Optional[str]) -> Optional[str]:
+    if not url:
+        return None
+
+    path_parts = urlparse(url).path.split("/")
+    try:
+        files_index = path_parts.index("files")
+        return path_parts[files_index + 1]
+    except (ValueError, IndexError):
+        return None
+
+
+def normalized_file_data(doc):
     doc = as_dict(doc)
-    data = doc.get("data") or doc.get("_data") or doc
-    bucket_file_id = data.get("bucketFileId")
+    return doc.get("data") or doc.get("_data") or doc
+
+
+def pdf_metadata(doc):
+    data = normalized_file_data(doc)
+    bucket_file_id = data.get("bucketFileId") or bucket_file_id_from_url(data.get("url"))
     name = data.get("name") or ""
     extension = (data.get("extension") or name.rsplit(".", 1)[-1]).lower()
     if (
@@ -86,6 +104,20 @@ def pdf_metadata(doc):
     ):
         return None
     return {"id": bucket_file_id, "name": name}
+
+
+def pdf_rejection_reason(doc):
+    data = normalized_file_data(doc)
+    bucket_file_id = data.get("bucketFileId") or bucket_file_id_from_url(data.get("url"))
+    name = data.get("name") or ""
+    extension = (data.get("extension") or name.rsplit(".", 1)[-1]).lower()
+    if not bucket_file_id:
+        return "missing bucketFileId and no storage file id in url"
+    if extension != "pdf":
+        return f"extension is {extension or 'empty'}, not pdf"
+    if data.get("type") != "document":
+        return f"type is {data.get('type') or 'empty'}, not document"
+    return "accepted"
 
 
 def extract_pdf_text(file_ids: list[str]) -> str:
@@ -146,7 +178,7 @@ async def ping():
 
 
 @app.get("/list-pdfs")
-async def list_pdfs(owner: str):
+async def list_pdfs(owner: str, debug: bool = False):
     try:
         response = tables_db.list_rows(
             database_id=config["APPWRITE_DATABASE_ID"],
@@ -158,12 +190,26 @@ async def list_pdfs(owner: str):
         )
         rows = as_dict(response).get("rows", [])
         files = [pdf for row in rows if (pdf := pdf_metadata(row))]
-        return {
+        payload = {
             "files": files,
             "owner": owner,
             "totalDocuments": len(rows),
             "matchedPdfs": len(files),
+            "filterVersion": "pdf-filter-v3",
         }
+        if debug:
+            payload["debugRows"] = [
+                {
+                    "name": normalized_file_data(row).get("name"),
+                    "type": normalized_file_data(row).get("type"),
+                    "extension": normalized_file_data(row).get("extension"),
+                    "hasBucketFileId": bool(normalized_file_data(row).get("bucketFileId")),
+                    "hasUrlStorageId": bool(bucket_file_id_from_url(normalized_file_data(row).get("url"))),
+                    "reason": pdf_rejection_reason(row),
+                }
+                for row in rows
+            ]
+        return payload
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch PDF list from Appwrite: {str(e)}")
 

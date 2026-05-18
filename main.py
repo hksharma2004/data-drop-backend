@@ -74,7 +74,12 @@ def pdf_metadata(doc):
     data = doc.get("data") or doc.get("_data") or doc
     bucket_file_id = data.get("bucketFileId")
     name = data.get("name") or ""
-    if not bucket_file_id or not name.lower().endswith(".pdf"):
+    if (
+        not bucket_file_id
+        or data.get("extension") != "pdf"
+        or data.get("itemType") != "file"
+        or data.get("type") != "document"
+    ):
         return None
     return {"id": bucket_file_id, "name": name}
 

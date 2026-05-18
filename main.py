@@ -68,11 +68,16 @@ class ChatRequest(BaseModel):
 
 
 def as_dict(value):
-    if isinstance(value, dict):
-        return value
     if hasattr(value, "model_dump"):
-        return value.model_dump()
-    return value.to_dict()
+        value = value.model_dump()
+    elif hasattr(value, "to_dict"):
+        value = value.to_dict()
+
+    if isinstance(value, dict):
+        return {key: as_dict(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [as_dict(item) for item in value]
+    return value
 
 
 def bucket_file_id_from_url(url: Optional[str]) -> Optional[str]:
@@ -89,7 +94,10 @@ def bucket_file_id_from_url(url: Optional[str]) -> Optional[str]:
 
 def normalized_file_data(doc):
     doc = as_dict(doc)
-    return doc.get("data") or doc.get("_data") or doc
+    data = doc.get("data") or doc.get("_data") or doc
+    if isinstance(data, list):
+        return {item.get("key"): item.get("value") for item in data if isinstance(item, dict)}
+    return data
 
 
 def pdf_metadata(doc):

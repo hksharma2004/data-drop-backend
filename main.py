@@ -65,6 +65,12 @@ class ChatRequest(BaseModel):
     question: str
 
 
+def field(item, name):
+    if isinstance(item, dict):
+        return item.get(name)
+    return getattr(item, name, None)
+
+
 def extract_pdf_text(file_ids: list[str]) -> str:
     pages = []
     for file_id in file_ids:
@@ -108,6 +114,11 @@ def answer_question_from_pdfs(file_ids: list[str], question: str) -> str:
 
 
 # Endpoints
+@app.get("/")
+async def home():
+    return {"status": "alive", "docs": "/docs", "health": "/ping"}
+
+
 @app.get("/ping")
 async def ping():
     return {
@@ -128,11 +139,12 @@ async def list_pdfs(owner: str):
                 Query.equal("type", ["document"]),
             ],
         )
+        documents = field(response, "documents") or []
         return {
             "files": [
-                {"id": doc["bucketFileId"], "name": doc["name"]}
-                for doc in response["documents"]
-                if doc["name"].lower().endswith(".pdf")
+                {"id": field(doc, "bucketFileId"), "name": field(doc, "name")}
+                for doc in documents
+                if (field(doc, "name") or "").lower().endswith(".pdf")
             ]
         }
     except Exception as e:

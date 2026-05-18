@@ -128,6 +128,21 @@ def pdf_rejection_reason(doc):
     return "accepted"
 
 
+def debug_row_shape(doc):
+    row = as_dict(doc)
+    data = row.get("data") or row.get("_data")
+    return {
+        "rowKeys": sorted(row.keys()) if isinstance(row, dict) else [],
+        "dataType": type(data).__name__,
+        "dataKeys": sorted(data.keys()) if isinstance(data, dict) else [],
+        "dataListKeys": [
+            sorted(item.keys())
+            for item in data[:5]
+            if isinstance(item, dict)
+        ] if isinstance(data, list) else [],
+    }
+
+
 def extract_pdf_text(file_ids: list[str]) -> str:
     pages = []
     for file_id in file_ids:
@@ -203,7 +218,7 @@ async def list_pdfs(owner: str, debug: bool = False):
             "owner": owner,
             "totalDocuments": len(rows),
             "matchedPdfs": len(files),
-            "filterVersion": "pdf-filter-v3",
+            "filterVersion": "pdf-filter-v4",
         }
         if debug:
             payload["debugRows"] = [
@@ -214,6 +229,7 @@ async def list_pdfs(owner: str, debug: bool = False):
                     "hasBucketFileId": bool(normalized_file_data(row).get("bucketFileId")),
                     "hasUrlStorageId": bool(bucket_file_id_from_url(normalized_file_data(row).get("url"))),
                     "reason": pdf_rejection_reason(row),
+                    "shape": debug_row_shape(row),
                 }
                 for row in rows
             ]

@@ -6,8 +6,8 @@ from urllib.parse import urlparse
 
 from appwrite.client import Client
 from appwrite.query import Query
+from appwrite.services.databases import Databases
 from appwrite.services.storage import Storage
-from appwrite.services.tables_db import TablesDB
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -48,7 +48,7 @@ for key, setter in (
     if config[key]:
         setter(config[key])
 
-tables_db = TablesDB(client)
+databases = Databases(client)
 storage = Storage(client)
 
 # FastAPI
@@ -203,22 +203,22 @@ async def ping():
 @app.get("/list-pdfs")
 async def list_pdfs(owner: str, debug: bool = False):
     try:
-        response = tables_db.list_rows(
+        response = databases.list_documents(
             database_id=config["APPWRITE_DATABASE_ID"],
-            table_id=config["APPWRITE_FILES_COLLECTION_ID"],
+            collection_id=config["APPWRITE_FILES_COLLECTION_ID"],
             queries=[
                 Query.equal("owner", [owner]),
                 Query.equal("type", ["document"]),
             ],
         )
-        rows = as_dict(response).get("rows", [])
+        rows = as_dict(response).get("documents", [])
         files = [pdf for row in rows if (pdf := pdf_metadata(row))]
         payload = {
             "files": files,
             "owner": owner,
             "totalDocuments": len(rows),
             "matchedPdfs": len(files),
-            "filterVersion": "pdf-filter-v4",
+            "filterVersion": "pdf-filter-v5",
         }
         if debug:
             payload["debugRows"] = [

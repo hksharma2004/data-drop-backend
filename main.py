@@ -4,8 +4,8 @@ import os
 
 from appwrite.client import Client
 from appwrite.query import Query
-from appwrite.services.databases import Databases
 from appwrite.services.storage import Storage
+from appwrite.services.tables_db import TablesDB
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -46,7 +46,7 @@ for key, setter in (
     if config[key]:
         setter(config[key])
 
-databases = Databases(client)
+tables_db = TablesDB(client)
 storage = Storage(client)
 
 # FastAPI
@@ -66,7 +66,11 @@ class ChatRequest(BaseModel):
 
 
 def as_dict(value):
-    return value if isinstance(value, dict) else value.to_dict()
+    if isinstance(value, dict):
+        return value
+    if hasattr(value, "model_dump"):
+        return value.model_dump()
+    return value.to_dict()
 
 
 def pdf_metadata(doc):
@@ -144,20 +148,20 @@ async def ping():
 @app.get("/list-pdfs")
 async def list_pdfs(owner: str):
     try:
-        response = databases.list_documents(
+        response = tables_db.list_rows(
             database_id=config["APPWRITE_DATABASE_ID"],
-            collection_id=config["APPWRITE_FILES_COLLECTION_ID"],
+            table_id=config["APPWRITE_FILES_COLLECTION_ID"],
             queries=[
                 Query.equal("owner", [owner]),
                 Query.equal("type", ["document"]),
             ],
         )
-        documents = as_dict(response).get("documents", [])
-        files = [pdf for doc in documents if (pdf := pdf_metadata(doc))]
+        rows = as_dict(response).get("rows", [])
+        files = [pdf for row in rows if (pdf := pdf_metadata(row))]
         return {
             "files": files,
             "owner": owner,
-            "totalDocuments": len(documents),
+            "totalDocuments": len(rows),
             "matchedPdfs": len(files),
         }
     except Exception as e:

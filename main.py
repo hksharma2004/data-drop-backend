@@ -68,10 +68,10 @@ class ChatRequest(BaseModel):
 
 
 def as_dict(value):
-    if hasattr(value, "model_dump"):
-        value = value.model_dump()
-    elif hasattr(value, "to_dict"):
+    if hasattr(value, "to_dict"):
         value = value.to_dict()
+    elif hasattr(value, "model_dump"):
+        value = value.model_dump()
 
     if isinstance(value, dict):
         return {key: as_dict(item) for key, item in value.items()}

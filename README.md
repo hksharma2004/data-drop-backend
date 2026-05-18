@@ -35,11 +35,13 @@ cd data-drop-backend
 
 2. **Install dependencies**
 ```bash
-pip install fastapi uvicorn python-dotenv PyPDF2 langchain langchain-google-genai langchain-community google-generativeai appwrite faiss-cpu pydantic
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
 3. **Environment Configuration**
-Create a `.env` file in the root directory:
+Create a `.env` file in the root directory, using `.env.example` as a template:
 
 ```env
 # Google AI Configuration
@@ -72,7 +74,7 @@ The API will be available at `http://localhost:8000`
 
 ### List PDF Documents
 - **Endpoint**: `GET /list-pdfs`
-- **Parameters**: `accountId` (query parameter)
+- **Parameters**: `owner` (query parameter)
 - **Description**: Retrieve all PDF documents associated with an account
 - **Response**: List of PDF files with ID and name
 

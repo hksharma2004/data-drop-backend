@@ -1,11 +1,10 @@
-fastapi
-uvicorn[standard]
-python-dotenv
-# Pin a langchain version compatible with the imports used in `main.py`.
-# If deploy still fails, try a different patch version (e.g. 0.0.300+).
-langchain==0.0.303
-google-generativeai
-langchain-google-genai
+fastapi==0.128.8
+uvicorn[standard]==0.39.0
+python-dotenv==1.2.1
+langchain==0.3.27
+langchain-community==0.3.27
+langchain-text-splitters==0.3.11
+langchain-google-genai==2.1.12
 PyPDF2
 faiss-cpu
 appwrite

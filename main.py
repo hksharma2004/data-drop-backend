@@ -209,6 +209,7 @@ async def list_pdfs(owner: str, debug: bool = False):
             queries=[
                 Query.equal("owner", [owner]),
                 Query.equal("type", ["document"]),
+                Query.select(["*"]),
             ],
         )
         rows = as_dict(response).get("documents", [])

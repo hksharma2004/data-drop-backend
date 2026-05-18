@@ -154,7 +154,12 @@ async def list_pdfs(owner: str):
         )
         documents = as_dict(response).get("documents", [])
         files = [pdf for doc in documents if (pdf := pdf_metadata(doc))]
-        return {"files": files}
+        return {
+            "files": files,
+            "owner": owner,
+            "totalDocuments": len(documents),
+            "matchedPdfs": len(files),
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch PDF list from Appwrite: {str(e)}")
 

@@ -65,10 +65,18 @@ class ChatRequest(BaseModel):
     question: str
 
 
-def field(item, name):
-    if isinstance(item, dict):
-        return item.get(name)
-    return getattr(item, name, None)
+def as_dict(value):
+    return value if isinstance(value, dict) else value.to_dict()
+
+
+def pdf_metadata(doc):
+    doc = as_dict(doc)
+    data = doc.get("data") or doc.get("_data") or doc
+    bucket_file_id = data.get("bucketFileId")
+    name = data.get("name") or ""
+    if not bucket_file_id or not name.lower().endswith(".pdf"):
+        return None
+    return {"id": bucket_file_id, "name": name}
 
 
 def extract_pdf_text(file_ids: list[str]) -> str:
@@ -139,14 +147,9 @@ async def list_pdfs(owner: str):
                 Query.equal("type", ["document"]),
             ],
         )
-        documents = field(response, "documents") or []
-        return {
-            "files": [
-                {"id": field(doc, "bucketFileId"), "name": field(doc, "name")}
-                for doc in documents
-                if (field(doc, "name") or "").lower().endswith(".pdf")
-            ]
-        }
+        documents = as_dict(response).get("documents", [])
+        files = [pdf for doc in documents if (pdf := pdf_metadata(doc))]
+        return {"files": files}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch PDF list from Appwrite: {str(e)}")
 

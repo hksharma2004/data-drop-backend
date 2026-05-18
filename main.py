@@ -3,8 +3,6 @@ import io
 import os
 
 from appwrite.client import Client
-from appwrite.query import Query
-from appwrite.services.databases import Databases
 from appwrite.services.storage import Storage
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
@@ -22,8 +20,6 @@ config = {
     "APPWRITE_ENDPOINT": os.getenv("APPWRITE_ENDPOINT"),
     "APPWRITE_PROJECT_ID": os.getenv("APPWRITE_PROJECT_ID"),
     "APPWRITE_API_KEY": os.getenv("APPWRITE_API_KEY"),
-    "APPWRITE_DATABASE_ID": os.getenv("APPWRITE_DATABASE_ID"),
-    "APPWRITE_FILES_COLLECTION_ID": os.getenv("APPWRITE_FILES_COLLECTION_ID"),
     "APPWRITE_BUCKET_ID": os.getenv("APPWRITE_BUCKET_ID"),
 }
 
@@ -46,7 +42,6 @@ for key, setter in (
     if config[key]:
         setter(config[key])
 
-databases = Databases(client)
 storage = Storage(client)
 
 # FastAPI
@@ -69,6 +64,16 @@ def field(item, name):
     if isinstance(item, dict):
         return item.get(name)
     return getattr(item, name, None)
+
+
+def file_id(file):
+    return field(file, "id") or field(file, "$id")
+
+
+def is_pdf(file):
+    name = field(file, "name") or ""
+    mime_type = field(file, "mimetype") or field(file, "mimeType") or ""
+    return name.lower().endswith(".pdf") or mime_type == "application/pdf"
 
 
 def extract_pdf_text(file_ids: list[str]) -> str:
@@ -131,20 +136,13 @@ async def ping():
 @app.get("/list-pdfs")
 async def list_pdfs(owner: str):
     try:
-        response = databases.list_documents(
-            database_id=config["APPWRITE_DATABASE_ID"],
-            collection_id=config["APPWRITE_FILES_COLLECTION_ID"],
-            queries=[
-                Query.equal("owner", [owner]),
-                Query.equal("type", ["document"]),
-            ],
-        )
-        documents = field(response, "documents") or []
+        response = storage.list_files(bucket_id=config["APPWRITE_BUCKET_ID"])
+        files = field(response, "files") or []
         return {
             "files": [
-                {"id": field(doc, "bucketFileId"), "name": field(doc, "name")}
-                for doc in documents
-                if (field(doc, "name") or "").lower().endswith(".pdf")
+                {"id": file_id(file), "name": field(file, "name")}
+                for file in files
+                if is_pdf(file)
             ]
         }
     except Exception as e:
